@@ -19,9 +19,16 @@ function parseCookies(cookieHeader?: string): Record<string, string> {
 }
 
 export function initSocketServer(httpServer: HttpServer): SocketIOServer {
+  const allowedOrigins = Array.from(
+    new Set([
+      ...env.CLIENT_URL.split(',').map((o) => o.trim()).filter(Boolean),
+      ...(env.RAILWAY_PUBLIC_DOMAIN ? [`https://${env.RAILWAY_PUBLIC_DOMAIN}`] : []),
+    ])
+  );
+
   io = new SocketIOServer(httpServer, {
     cors: {
-      origin: env.CLIENT_URL.split(',').map((o) => o.trim()),
+      origin: allowedOrigins,
       credentials: true,
     },
   });

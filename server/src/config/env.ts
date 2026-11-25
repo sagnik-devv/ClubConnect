@@ -4,11 +4,16 @@ import { z } from 'zod';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+const railwayOrigin = process.env.RAILWAY_PUBLIC_DOMAIN
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  : undefined;
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(5050),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
-  CLIENT_URL: z.string().url().default('http://localhost:5173'),
+  CLIENT_URL: z.string().min(1).default(railwayOrigin || 'http://localhost:5173'),
+  RAILWAY_PUBLIC_DOMAIN: z.string().optional(),
   JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 characters'),
   JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 characters'),
   ACCESS_TOKEN_EXPIRES_IN: z.string().default('15m'),

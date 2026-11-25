@@ -11,8 +11,8 @@ async function bootstrap() {
   const server = http.createServer(app);
   initSocketServer(server);
 
-  server.listen(env.PORT, () => {
-    console.log(`ClubConnect server listening on http://localhost:${env.PORT}`);
+  server.listen(env.PORT, '0.0.0.0', () => {
+    console.log(`ClubConnect server listening on http://0.0.0.0:${env.PORT}`);
   });
 
   const shutdown = async () => {

@@ -1,7 +1,12 @@
 import { CorsOptions } from 'cors';
 import { env } from './env.js';
 
-const allowedOrigins = env.CLIENT_URL.split(',').map((o) => o.trim());
+const allowedOrigins = Array.from(
+  new Set([
+    ...env.CLIENT_URL.split(',').map((o) => o.trim()).filter(Boolean),
+    ...(env.RAILWAY_PUBLIC_DOMAIN ? [`https://${env.RAILWAY_PUBLIC_DOMAIN}`] : []),
+  ])
+);
 
 export const corsOptions: CorsOptions = {
   origin(origin, callback) {

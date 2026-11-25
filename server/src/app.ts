@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -22,6 +23,7 @@ import announcementRoutes from './routes/announcement.routes.js';
 
 export function createApp() {
   const app = express();
+  app.set('trust proxy', 1);
 
   app.use(
     helmet({
@@ -55,10 +57,41 @@ export function createApp() {
   app.use('/api/president', presidentRoutes);
   app.use('/api/announcements', announcementRoutes);
 
-  app.use((_req, res) => {
+  app.use('/api', (_req, res) => {
     res.status(404).json({
       success: false,
       message: 'API route not found',
+      errors: [],
+    });
+  });
+
+  if (env.NODE_ENV === 'production') {
+    const candidateDirs = [
+      path.resolve(process.cwd(), 'client/dist'),
+      path.resolve(process.cwd(), '../client/dist'),
+    ];
+    const clientDistDir = candidateDirs.find((dir) =>
+      fs.existsSync(path.join(dir, 'index.html'))
+    );
+    if (clientDistDir) {
+      app.use(express.static(clientDistDir));
+      app.get('*', (req, res, next) => {
+        if (
+          req.path.startsWith('/api') ||
+          req.path.startsWith('/uploads') ||
+          req.path.startsWith('/socket.io')
+        ) {
+          return next();
+        }
+        res.sendFile(path.join(clientDistDir, 'index.html'));
+      });
+    }
+  }
+
+  app.use((_req, res) => {
+    res.status(404).json({
+      success: false,
+      message: 'Route not found',
       errors: [],
     });
   });
