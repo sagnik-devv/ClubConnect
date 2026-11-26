@@ -9,6 +9,7 @@ import {
   verifyRefreshToken,
 } from '../utils/jwt.js';
 import { USER_SAFE_SELECT } from '../middleware/auth.middleware.js';
+import { AVATAR_PRESETS } from '../validators/auth.validator.js';
 import { createNotification } from './notification.service.js';
 
 const SALT_ROUNDS = 12;
@@ -47,6 +48,7 @@ export async function registerUser(input: {
   department: string;
   course: string;
   yearOfStudy: string;
+  profileImage?: string;
 }) {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {
@@ -54,6 +56,8 @@ export async function registerUser(input: {
   }
 
   const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
+  const defaultAvatar =
+    input.profileImage ?? AVATAR_PRESETS[Math.floor(Math.random() * AVATAR_PRESETS.length)];
 
   const user = await prisma.user.create({
     data: {
@@ -63,6 +67,7 @@ export async function registerUser(input: {
       department: input.department,
       course: input.course,
       yearOfStudy: input.yearOfStudy,
+      profileImage: defaultAvatar,
       globalRole: GlobalRole.STUDENT,
     },
     select: USER_SAFE_SELECT,

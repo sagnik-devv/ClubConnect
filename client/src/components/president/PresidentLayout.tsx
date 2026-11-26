@@ -203,7 +203,13 @@ export const PresidentLayout: React.FC<{ children: React.ReactNode }> = ({ child
         <div className="pt-3 border-t border-black/[0.08] space-y-2">
           {!isNarrow && user && (
             <div className="flex items-center gap-2.5 px-2 py-1.5">
-              <Avatar initials={initials} color="#02093a" size="sm" />
+              <Avatar
+                initials={initials}
+                profileImage={user.profileImage}
+                seed={user.id}
+                color="#02093a"
+                size="sm"
+              />
               <div className="min-w-0">
                 <div className="text-[13px] font-semibold text-black truncate">{user.fullName}</div>
                 <div className="text-[11px] text-[#757575] truncate">

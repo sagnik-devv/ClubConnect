@@ -15,6 +15,7 @@ export const userService = {
     yearOfStudy?: string | null;
     skills?: string[];
     interests?: string[];
+    profileImage?: string | null;
   }) {
     const res = await api.patch<ApiResponse<AuthUser>>('/users/me', payload);
     return res.data.data;

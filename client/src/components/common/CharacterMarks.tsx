@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 
 export interface CharacterSpec {
   id: string;
+  label: string;
   borderColor: string;
   accentColor: string;
   hairStyle: 'bob' | 'curly' | 'parted' | 'spiky' | 'bun' | 'cap' | 'wave';
@@ -11,28 +12,50 @@ export interface CharacterSpec {
 }
 
 export const HERO_CHARACTERS: CharacterSpec[] = [
-  { id: 'c1', borderColor: '#097fe8', accentColor: '#e6f3fe', hairStyle: 'bob', accessory: 'glasses', skinTone: '#f7d6bf' },
-  { id: 'c2', borderColor: '#f64932', accentColor: '#ffb110', hairStyle: 'curly', accessory: 'none', skinTone: '#c6865c' },
-  { id: 'c3', borderColor: '#ffb110', accentColor: '#62aef0', hairStyle: 'parted', accessory: 'headphones', skinTone: '#f1c29b' },
-  { id: 'c4', borderColor: '#62aef0', accentColor: '#f64932', hairStyle: 'bun', accessory: 'none', skinTone: '#8d5524' },
-  { id: 'c5', borderColor: '#0075de', accentColor: '#ffb110', hairStyle: 'spiky', accessory: 'glasses', skinTone: '#eac096' },
-  { id: 'c6', borderColor: '#f64932', accentColor: '#e6f3fe', hairStyle: 'wave', accessory: 'beret', skinTone: '#f7d6bf' },
-  { id: 'c7', borderColor: '#ffb110', accentColor: '#02093a', hairStyle: 'cap', accessory: 'none', skinTone: '#d49a6a' },
+  { id: 'c1', label: 'Scholar', borderColor: '#097fe8', accentColor: '#e6f3fe', hairStyle: 'bob', accessory: 'glasses', skinTone: '#f7d6bf' },
+  { id: 'c2', label: 'Sunny', borderColor: '#f64932', accentColor: '#ffb110', hairStyle: 'curly', accessory: 'none', skinTone: '#c6865c' },
+  { id: 'c3', label: 'Beats', borderColor: '#ffb110', accentColor: '#62aef0', hairStyle: 'parted', accessory: 'headphones', skinTone: '#f1c29b' },
+  { id: 'c4', label: 'Studio', borderColor: '#62aef0', accentColor: '#f64932', hairStyle: 'bun', accessory: 'none', skinTone: '#8d5524' },
+  { id: 'c5', label: 'Spark', borderColor: '#0075de', accentColor: '#ffb110', hairStyle: 'spiky', accessory: 'glasses', skinTone: '#eac096' },
+  { id: 'c6', label: 'Atelier', borderColor: '#f64932', accentColor: '#e6f3fe', hairStyle: 'wave', accessory: 'beret', skinTone: '#f7d6bf' },
+  { id: 'c7', label: 'Cap Crew', borderColor: '#ffb110', accentColor: '#02093a', hairStyle: 'cap', accessory: 'none', skinTone: '#d49a6a' },
 ];
+
+export const AVATAR_PREFIX = 'avatar:';
+
+export function getCharacterByAvatarValue(
+  value?: string | null,
+  fallbackSeed?: string
+): CharacterSpec | null {
+  if (value && value.startsWith(AVATAR_PREFIX)) {
+    const id = value.slice(AVATAR_PREFIX.length);
+    return HERO_CHARACTERS.find((c) => c.id === id) ?? HERO_CHARACTERS[0];
+  }
+  if (fallbackSeed !== undefined) {
+    let hash = 0;
+    for (let i = 0; i < fallbackSeed.length; i += 1) {
+      hash = (hash * 31 + fallbackSeed.charCodeAt(i)) >>> 0;
+    }
+    return HERO_CHARACTERS[hash % HERO_CHARACTERS.length];
+  }
+  return null;
+}
 
 export const AvatarCharacterMark: React.FC<{
   spec: CharacterSpec;
   size?: number;
   delay?: number;
+  animated?: boolean;
   className?: string;
-}> = ({ spec, size = 44, delay = 0, className = '' }) => {
+}> = ({ spec, size = 44, delay = 0, animated = true, className = '' }) => {
   const prefersReducedMotion = useReducedMotion();
+  const shouldAnimate = animated && !prefersReducedMotion;
 
   return (
     <motion.div
-      initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.8, y: 6 }}
+      initial={shouldAnimate ? { opacity: 0, scale: 0.8, y: 6 } : false}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      whileHover={prefersReducedMotion ? undefined : { y: -4, scale: 1.06 }}
+      whileHover={shouldAnimate ? { y: -4, scale: 1.06 } : undefined}
       transition={{
         type: 'spring',
         stiffness: 360,
@@ -134,6 +157,49 @@ export const AvatarCharacterMark: React.FC<{
         )}
       </svg>
     </motion.div>
+  );
+};
+
+export const CharacterAvatarPicker: React.FC<{
+  selectedValue: string | null;
+  onSelect: (avatarValue: string | null) => void;
+  allowDeselect?: boolean;
+  size?: number;
+  className?: string;
+}> = ({ selectedValue, onSelect, allowDeselect = false, size = 44, className = '' }) => {
+  return (
+    <div className={`flex flex-wrap items-center justify-center gap-2.5 ${className}`} role="radiogroup" aria-label="Choose a character avatar">
+      {HERO_CHARACTERS.map((spec, idx) => {
+        const value = `${AVATAR_PREFIX}${spec.id}`;
+        const isSelected = selectedValue === value;
+        return (
+          <button
+            key={spec.id}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            aria-label={`${spec.label} avatar`}
+            title={spec.label}
+            onClick={() => onSelect(allowDeselect && isSelected ? null : value)}
+            className={`relative rounded-full p-0.5 transition-transform cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0075de] ${
+              isSelected
+                ? 'ring-2 ring-black ring-offset-2 scale-110'
+                : 'opacity-85 hover:opacity-100 hover:scale-105'
+            }`}
+          >
+            <AvatarCharacterMark spec={spec} size={size} delay={idx * 0.04} />
+            {isSelected && (
+              <span
+                className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center border border-white"
+                aria-hidden="true"
+              >
+                ✓
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
   );
 };
 

@@ -106,7 +106,13 @@ export const PresidentMembershipRequestsPage: React.FC = () => {
                 <article key={req.id} className="notion-card p-6 space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <Avatar initials={initials} color="#0075de" size="md" />
+                      <Avatar
+                        initials={initials}
+                        profileImage={req.user.profileImage}
+                        seed={req.user.id}
+                        color="#0075de"
+                        size="md"
+                      />
                       <div>
                         <h2 className="text-[17px] font-bold text-black">{req.user.fullName}</h2>
                         <div className="text-[12px] text-[#615d59]">

@@ -392,7 +392,13 @@ export const ManagementDashboardPage: React.FC = () => {
                   <tr key={m.membershipId} className="hover:bg-[#f6f5f4]/60">
                     <td className="py-3.5 px-6">
                       <div className="flex items-center gap-3">
-                        <Avatar initials={initials} color="#0075de" size="sm" />
+                        <Avatar
+                          initials={initials}
+                          profileImage={m.user.profileImage}
+                          seed={m.user.id}
+                          color="#0075de"
+                          size="sm"
+                        />
                         <div>
                           <div className="font-semibold text-black">{m.user.fullName}</div>
                           <div className="text-[12px] text-[#757575]">

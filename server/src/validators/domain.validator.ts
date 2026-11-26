@@ -7,6 +7,7 @@ import {
   TaskPriority,
   TaskStatus,
 } from '@prisma/client';
+import { AVATAR_PRESETS } from './auth.validator.js';
 
 export const createTaskSchema = z.object({
   title: z.string().trim().min(2).max(200),
@@ -95,4 +96,5 @@ export const updateProfileSchema = z.object({
   yearOfStudy: z.string().trim().max(50).nullable().optional(),
   skills: z.array(z.string().trim().min(1)).optional(),
   interests: z.array(z.string().trim().min(1)).optional(),
+  profileImage: z.enum(AVATAR_PRESETS).nullable().optional(),
 });

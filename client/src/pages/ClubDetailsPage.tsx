@@ -311,7 +311,13 @@ export const ClubDetailsPage: React.FC = () => {
                         key={leader.membershipId}
                         className="flex items-center gap-3 p-2.5 rounded-[8px] bg-[#f6f5f4]"
                       >
-                        <Avatar initials={initials} color="#0075de" size="md" />
+                        <Avatar
+                          initials={initials}
+                          profileImage={leader.user.profileImage}
+                          seed={leader.user.id}
+                          color="#0075de"
+                          size="md"
+                        />
                         <div>
                           <div className="text-[14px] font-semibold text-black">
                             {leader.user.fullName}

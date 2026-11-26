@@ -7,6 +7,16 @@ const strongPassword = z
   .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
   .regex(/[0-9]/, 'Password must contain at least one number');
 
+export const AVATAR_PRESETS = [
+  'avatar:c1',
+  'avatar:c2',
+  'avatar:c3',
+  'avatar:c4',
+  'avatar:c5',
+  'avatar:c6',
+  'avatar:c7',
+] as const;
+
 export const registerSchema = z
   .object({
     fullName: z.string().trim().min(2, 'Full name must be at least 2 characters').max(100),
@@ -16,6 +26,7 @@ export const registerSchema = z
     department: z.string().trim().min(2, 'Department is required').max(100),
     course: z.string().trim().min(2, 'Course is required').max(100),
     yearOfStudy: z.string().trim().min(1, 'Year of study is required').max(50),
+    profileImage: z.enum(AVATAR_PRESETS).optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',

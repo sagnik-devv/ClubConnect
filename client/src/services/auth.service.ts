@@ -9,6 +9,7 @@ export interface RegisterPayload {
   department: string;
   course: string;
   yearOfStudy: string;
+  profileImage?: string;
 }
 
 export interface LoginPayload {

@@ -204,7 +204,13 @@ export const Navbar: React.FC = () => {
                 to="/profile"
                 className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-[8px] hover:bg-black/[0.04] transition-colors"
               >
-                <Avatar initials={initials} color="#0075de" size="sm" />
+                <Avatar
+                  initials={initials}
+                  profileImage={user.profileImage}
+                  seed={user.id}
+                  color="#0075de"
+                  size="sm"
+                />
                 <span className="text-[13px] font-medium text-black max-w-[130px] truncate">
                   {user.fullName}
                 </span>

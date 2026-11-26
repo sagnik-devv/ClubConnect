@@ -60,7 +60,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onCloseMob
             className="block p-3 rounded-[10px] bg-[#f6f5f4] border border-black/[0.06] hover:border-black/15 transition-colors"
           >
             <div className="flex items-center gap-2.5">
-              <Avatar initials={initials} color="#0075de" size="md" />
+              <Avatar
+                initials={initials}
+                profileImage={user.profileImage}
+                seed={user.id}
+                color="#0075de"
+                size="md"
+              />
               <div className="min-w-0">
                 <div className="text-[14px] font-semibold text-black truncate">{user.fullName}</div>
                 <div className="text-[12px] text-[#615d59] truncate">

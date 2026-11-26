@@ -40,6 +40,7 @@ export async function updateCurrentUserProfile(
     yearOfStudy?: string | null;
     skills?: string[];
     interests?: string[];
+    profileImage?: string | null;
   }
 ) {
   const updated = await prisma.user.update({

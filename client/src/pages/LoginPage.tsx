@@ -1,11 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { Shuffle } from 'lucide-react';
 import { toast } from 'sonner';
 import { MainLayout } from '../layouts/MainLayout';
 import { Button } from '../components/common/Button';
+import { Avatar } from '../components/common/Avatar';
 import { useAuth } from '../context/AuthContext';
-import { AvatarCharacterMark, HERO_CHARACTERS } from '../components/common/CharacterMarks';
+import {
+  AVATAR_PREFIX,
+  CharacterAvatarPicker,
+  HERO_CHARACTERS,
+  getCharacterByAvatarValue,
+} from '../components/common/CharacterMarks';
+import { userService } from '../services/user.service';
 import { getApiErrorMessage } from '../services/api';
 
 interface LoginValues {
@@ -28,9 +36,30 @@ export const LoginPage: React.FC<{ initialTab?: 'signin' | 'signup' }> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, hasAnyLeadership, user, login, register: registerAccount } = useAuth();
+  const { isAuthenticated, hasAnyLeadership, user, login, register: registerAccount, refreshSession } = useAuth();
   const [tab, setTab] = useState<'signin' | 'signup'>(initialTab);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedSignupAvatar, setSelectedSignupAvatar] = useState<string>(
+    () => `${AVATAR_PREFIX}${HERO_CHARACTERS[Math.floor(Math.random() * HERO_CHARACTERS.length)].id}`
+  );
+  const [selectedLoginAvatar, setSelectedLoginAvatar] = useState<string | null>(null);
+
+  const activeAvatar = tab === 'signup' ? selectedSignupAvatar : selectedLoginAvatar;
+  const activeSpec = activeAvatar ? getCharacterByAvatarValue(activeAvatar) : null;
+
+  const handleAvatarSelect = (val: string | null) => {
+    if (tab === 'signup') {
+      if (val) setSelectedSignupAvatar(val);
+    } else {
+      setSelectedLoginAvatar(val);
+    }
+  };
+
+  const handleShuffleAvatar = () => {
+    const others = HERO_CHARACTERS.filter((c) => `${AVATAR_PREFIX}${c.id}` !== activeAvatar);
+    const pick = others[Math.floor(Math.random() * others.length)] ?? HERO_CHARACTERS[0];
+    handleAvatarSelect(`${AVATAR_PREFIX}${pick.id}`);
+  };
 
   const explicitFrom = (location.state as { from?: string } | null)?.from;
   const from = explicitFrom || '/dashboard';
@@ -66,7 +95,11 @@ export const LoginPage: React.FC<{ initialTab?: 'signin' | 'signup' }> = ({
   const onLogin = async (values: LoginValues) => {
     setSubmitting(true);
     try {
-      const signedUser = await login(values);
+      let signedUser = await login(values);
+      if (selectedLoginAvatar) {
+        signedUser = await userService.updateProfile({ profileImage: selectedLoginAvatar });
+        await refreshSession();
+      }
       toast.success('Signed in successfully');
       if (explicitFrom) {
         navigate(explicitFrom, { replace: true });
@@ -99,7 +132,7 @@ export const LoginPage: React.FC<{ initialTab?: 'signin' | 'signup' }> = ({
   const onRegister = async (values: RegisterValues) => {
     setSubmitting(true);
     try {
-      await registerAccount(values);
+      await registerAccount({ ...values, profileImage: selectedSignupAvatar });
       toast.success('Account created! Welcome to ClubConnect.');
       navigate('/dashboard', { replace: true });
     } catch (err) {
@@ -114,10 +147,44 @@ export const LoginPage: React.FC<{ initialTab?: 'signin' | 'signup' }> = ({
       <section className="py-12 sm:py-16">
         <div className="max-w-md mx-auto px-4">
           <div className="text-center mb-8">
-            <div className="flex justify-center gap-2 mb-4">
-              {HERO_CHARACTERS.slice(0, 3).map((spec, idx) => (
-                <AvatarCharacterMark key={spec.id} spec={spec} size={40} delay={idx * 0.05} />
-              ))}
+            <CharacterAvatarPicker
+              selectedValue={activeAvatar}
+              onSelect={handleAvatarSelect}
+              allowDeselect={tab === 'signin'}
+              size={44}
+              className="mb-3"
+            />
+            <div className="mb-3 flex items-center justify-center gap-2 text-[12px] text-[#615d59]">
+              {tab === 'signup' ? (
+                <>
+                  <span>
+                    Avatar: <strong className="text-black">{activeSpec?.label ?? 'Scholar'}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleShuffleAvatar}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-black/10 text-[11px] font-medium text-black hover:bg-[#f6f5f4] transition-colors cursor-pointer"
+                  >
+                    <Shuffle className="w-3 h-3" />
+                    Shuffle
+                  </button>
+                </>
+              ) : selectedLoginAvatar ? (
+                <>
+                  <span>
+                    Switching to <strong className="text-black">{activeSpec?.label}</strong> on sign-in
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLoginAvatar(null)}
+                    className="underline hover:text-black cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </>
+              ) : (
+                <span>Click any avatar above to rock a new vibe on sign-in</span>
+              )}
             </div>
             <h1 className="text-[32px] font-bold text-black tracking-[-0.03em]">
               {tab === 'signin' ? 'Sign in to ClubConnect' : 'Create your ClubConnect account'}
@@ -130,11 +197,19 @@ export const LoginPage: React.FC<{ initialTab?: 'signin' | 'signup' }> = ({
           <div className="notion-card p-6 sm:p-8">
             {showPortalChooser ? (
               <div className="space-y-4">
-                <div>
-                  <h2 className="text-[20px] font-bold text-black">Choose your portal</h2>
-                  <p className="mt-1 text-[13px] text-[#615d59]">
-                    Your account has both student membership and club leadership permissions.
-                  </p>
+                <div className="flex items-center gap-3">
+                  <Avatar
+                    initials={(user?.fullName || 'CC').slice(0, 2).toUpperCase()}
+                    profileImage={user?.profileImage}
+                    seed={user?.id || user?.fullName}
+                    size="lg"
+                  />
+                  <div>
+                    <h2 className="text-[20px] font-bold text-black">Choose your portal</h2>
+                    <p className="mt-0.5 text-[13px] text-[#615d59]">
+                      Signed in as {user?.fullName} — pick where to start.
+                    </p>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   <button

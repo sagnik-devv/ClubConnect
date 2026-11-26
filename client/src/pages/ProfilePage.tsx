@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { WorkspaceLayout } from '../layouts/WorkspaceLayout';
+import { Avatar } from '../components/common/Avatar';
+import { CharacterAvatarPicker } from '../components/common/CharacterMarks';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { ErrorState, PageSkeleton } from '../components/common/StateFeedback';
@@ -117,50 +119,63 @@ export const ProfilePage: React.FC = () => {
           <p className="text-[14px] text-[#615d59]">{profile.email}</p>
         </div>
 
-        {/* Avatar Upload */}
-        <section className="notion-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            {profile.profileImage ? (
-              <img
-                src={profile.profileImage}
-                alt={profile.fullName}
-                className="w-16 h-16 rounded-full object-cover border border-black/10"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-[#0075de] text-white font-bold text-[18px] flex items-center justify-center">
-                {profile.fullName
+        {/* Avatar Upload & Character Picker */}
+        <section className="notion-card p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Avatar
+                initials={profile.fullName
                   .split(' ')
                   .map((p) => p[0])
                   .join('')
                   .slice(0, 2)
                   .toUpperCase()}
+                profileImage={profile.profileImage}
+                seed={profile.id}
+                size="xl"
+              />
+              <div>
+                <div className="font-semibold text-black">Profile Picture</div>
+                <div className="text-[13px] text-[#615d59]">
+                  Pick a funky ClubConnect character or upload JPEG/PNG/WebP up to 5MB.
+                </div>
               </div>
-            )}
+            </div>
+
             <div>
-              <div className="font-semibold text-black">Profile Picture</div>
-              <div className="text-[13px] text-[#615d59]">JPEG, PNG, or WebP up to 5MB.</div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) avatarMutation.mutate(file);
+                }}
+              />
+              <Button
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarMutation.isPending}
+              >
+                <Camera className="w-4 h-4" />
+                {avatarMutation.isPending ? 'Uploading...' : 'Upload Photo'}
+              </Button>
             </div>
           </div>
 
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) avatarMutation.mutate(file);
+          <div className="pt-4 border-t border-black/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span className="text-[13px] font-medium text-[#615d59]">
+              Quick Character Avatars
+            </span>
+            <CharacterAvatarPicker
+              selectedValue={profile.profileImage}
+              onSelect={(val) => {
+                if (val) updateMutation.mutate({ profileImage: val });
               }}
+              size={40}
+              className="sm:justify-end"
             />
-            <Button
-              variant="secondary"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={avatarMutation.isPending}
-            >
-              <Camera className="w-4 h-4" />
-              {avatarMutation.isPending ? 'Uploading...' : 'Upload Avatar'}
-            </Button>
           </div>
         </section>
 
