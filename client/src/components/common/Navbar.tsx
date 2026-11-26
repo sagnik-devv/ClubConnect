@@ -60,10 +60,11 @@ export const Navbar: React.FC = () => {
           to="/"
           className="flex items-center gap-2.5 text-black font-semibold text-[17px] tracking-[-0.02em] shrink-0"
         >
-          <span className="w-8 h-8 rounded-[8px] bg-white border border-black/15 flex items-center justify-center relative">
-            <span className="w-3.5 h-3.5 rounded-[4px] bg-[#0075de] block" />
-            <span className="w-2 h-2 rounded-full bg-[#ffb110] absolute -top-1 -right-1 border border-black/20" />
-          </span>
+          <img
+            src="/logo.png"
+            alt="ClubConnect logo"
+            className="h-8 w-auto object-contain shrink-0"
+          />
           <span>ClubConnect</span>
         </Link>
 

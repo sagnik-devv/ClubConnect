@@ -139,9 +139,11 @@ export const PresidentLayout: React.FC<{ children: React.ReactNode }> = ({ child
           <div className="flex items-center justify-between px-1">
             {!isNarrow && (
               <Link to="/president" className="flex items-center gap-2 font-bold text-[15px] text-black">
-                <span className="w-7 h-7 rounded-[7px] bg-[#02093a] text-white text-[12px] flex items-center justify-center font-bold">
-                  CC
-                </span>
+                <img
+                  src="/logo.png"
+                  alt="ClubConnect logo"
+                  className="h-7 w-auto object-contain shrink-0"
+                />
                 <span>President Portal</span>
               </Link>
             )}

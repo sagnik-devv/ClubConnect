@@ -11,9 +11,11 @@ export const Footer: React.FC = () => {
               to="/"
               className="inline-flex items-center gap-2.5 text-black font-semibold text-[17px] tracking-[-0.02em]"
             >
-              <span className="w-7 h-7 rounded-[7px] bg-white border border-black/15 flex items-center justify-center">
-                <span className="w-3 h-3 rounded-[3px] bg-[#0075de] block" />
-              </span>
+              <img
+                src="/logo.png"
+                alt="ClubConnect logo"
+                className="h-7 w-auto object-contain shrink-0"
+              />
               <span>ClubConnect</span>
             </Link>
             <p className="mt-3 text-[14px] text-[#615d59] max-w-xs leading-relaxed">
