@@ -20,6 +20,12 @@ import { AnimatedCounter } from '../components/animations/AnimatedCounter';
 import { Avatar } from '../components/common/Avatar';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
+import {
+  CLUB_AVATAR_PREFIX,
+  ClubAvatarPicker,
+  ClubLogoMark,
+  getClubAvatarByValue,
+} from '../components/common/CharacterMarks';
 import { Modal } from '../components/common/Modal';
 import { CreateTaskModal } from '../components/tasks/CreateTaskModal';
 import { EmptyState, ErrorState, PageSkeleton } from '../components/common/StateFeedback';
@@ -28,6 +34,8 @@ import { getApiErrorMessage } from '../services/api';
 interface EditClubValues {
   shortDescription: string;
   expectedTimeCommitment: string;
+  logo: string;
+  accentColor: string;
   isRecruiting: boolean;
 }
 
@@ -93,10 +101,16 @@ export const ManagementDashboardPage: React.FC = () => {
       ? {
           shortDescription: club.shortDescription,
           expectedTimeCommitment: club.expectedTimeCommitment || '',
+          logo:
+            club.logo ||
+            `${CLUB_AVATAR_PREFIX}${getClubAvatarByValue(club.logo, club.slug).id}`,
+          accentColor: club.accentColor || '#e6f3fe',
           isRecruiting: club.isRecruiting,
         }
       : undefined,
   });
+  const watchedEditLogo = editClubForm.watch('logo');
+  const watchedEditTint = editClubForm.watch('accentColor');
 
   const editClubMutation = useMutation({
     mutationFn: (values: EditClubValues) => clubService.updateClub(activeClubId, values),
@@ -152,12 +166,20 @@ export const ManagementDashboardPage: React.FC = () => {
   return (
     <WorkspaceLayout>
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-        <div>
-          <p className="text-[13px] font-medium text-[#757575]">Club Management Dashboard</p>
-          <h1 className="mt-1 text-[32px] sm:text-[40px] font-bold text-black tracking-[-0.03em] leading-tight">
-            {club.name}
-          </h1>
-          <p className="mt-1.5 text-[15px] text-[#615d59]">{club.shortDescription}</p>
+        <div className="flex items-start gap-4">
+          <ClubLogoMark
+            clubId={club.slug}
+            logo={club.logo}
+            accentColor={club.accentColor || '#e6f3fe'}
+            size={52}
+          />
+          <div>
+            <p className="text-[13px] font-medium text-[#757575]">Club Management Dashboard</p>
+            <h1 className="mt-1 text-[32px] sm:text-[40px] font-bold text-black tracking-[-0.03em] leading-tight">
+              {club.name}
+            </h1>
+            <p className="mt-1.5 text-[15px] text-[#615d59]">{club.shortDescription}</p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -442,6 +464,15 @@ export const ManagementDashboardPage: React.FC = () => {
           onSubmit={editClubForm.handleSubmit((vals) => editClubMutation.mutate(vals))}
           className="space-y-4"
         >
+          <ClubAvatarPicker
+            clubSlug={club.slug}
+            selectedLogo={watchedEditLogo}
+            selectedTint={watchedEditTint || '#e6f3fe'}
+            onSelectLogo={(val) => editClubForm.setValue('logo', val, { shouldDirty: true })}
+            onSelectTint={(color) =>
+              editClubForm.setValue('accentColor', color, { shouldDirty: true })
+            }
+          />
           <div>
             <label htmlFor="mc-short" className="block text-[13px] font-medium mb-1">
               Short Description

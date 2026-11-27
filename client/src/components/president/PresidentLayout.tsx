@@ -28,31 +28,42 @@ import { usePresidentClub } from '../../context/PresidentClubContext';
 import { notificationService } from '../../services/notification.service';
 import { Avatar } from '../common/Avatar';
 import { Badge } from '../common/Badge';
+import { ClubLogoMark } from '../common/CharacterMarks';
 
 export const ClubSelector: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
   const { authorizedClubs, selectedClubId, setSelectedClubId } = usePresidentClub();
 
   if (authorizedClubs.length === 0) return null;
+  const active = authorizedClubs.find((c) => c.id === selectedClubId) || authorizedClubs[0];
   if (collapsed) {
-    const active = authorizedClubs.find((c) => c.id === selectedClubId) || authorizedClubs[0];
     return (
-      <div
-        title={active.name}
-        className="w-9 h-9 mx-auto rounded-[8px] bg-[#e6f3fe] text-[#0075de] font-bold text-[13px] flex items-center justify-center border border-[#0075de]/20"
-      >
-        {active.name.slice(0, 2).toUpperCase()}
+      <div title={active.name} className="flex justify-center">
+        <ClubLogoMark
+          clubId={active.slug}
+          logo={active.logo}
+          accentColor={active.accentColor || '#e6f3fe'}
+          size={36}
+        />
       </div>
     );
   }
 
   return (
-    <div className="p-3 rounded-[10px] bg-[#f6f5f4] border border-black/[0.08]">
-      <label
-        htmlFor="president-club-selector"
-        className="block text-[11px] font-semibold uppercase tracking-wider text-[#757575] mb-1.5"
-      >
-        Managed Club ({authorizedClubs.length})
-      </label>
+    <div className="p-3 rounded-[10px] bg-[#f6f5f4] border border-black/[0.08] space-y-2">
+      <div className="flex items-center gap-2">
+        <ClubLogoMark
+          clubId={active.slug}
+          logo={active.logo}
+          accentColor={active.accentColor || '#e6f3fe'}
+          size={28}
+        />
+        <label
+          htmlFor="president-club-selector"
+          className="block text-[11px] font-semibold uppercase tracking-wider text-[#757575]"
+        >
+          Managed Club ({authorizedClubs.length})
+        </label>
+      </div>
       <select
         id="president-club-selector"
         value={selectedClubId}

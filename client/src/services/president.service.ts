@@ -299,10 +299,14 @@ export const presidentService = {
     return res.data.data;
   },
 
-  async updateRecruitmentStatus(applicationId: string, status: ApplicationStatus) {
+  async updateRecruitmentStatus(
+    applicationId: string,
+    status: ApplicationStatus,
+    assignedRole?: ClubRole
+  ) {
     const res = await api.patch<ApiResponse<RecruitmentApplication>>(
       `/president/recruitment/${applicationId}/status`,
-      { status }
+      { status, ...(assignedRole ? { assignedRole } : {}) }
     );
     return res.data.data;
   },

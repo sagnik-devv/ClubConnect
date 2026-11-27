@@ -1,5 +1,5 @@
 import { api } from './api';
-import { ApiResponse, ApplicationStatus, RecruitmentApplication } from '../types';
+import { ApiResponse, ApplicationStatus, ClubRole, RecruitmentApplication } from '../types';
 
 export const recruitmentService = {
   async getOverview() {
@@ -28,10 +28,15 @@ export const recruitmentService = {
     return res.data.data;
   },
 
-  async updateStatus(id: string, status: ApplicationStatus, onboardingStep?: number) {
+  async updateStatus(
+    id: string,
+    status: ApplicationStatus,
+    onboardingStep?: number,
+    assignedRole?: ClubRole
+  ) {
     const res = await api.patch<ApiResponse<RecruitmentApplication>>(
       `/recruitment/${id}/status`,
-      { status, onboardingStep }
+      { status, onboardingStep, ...(assignedRole ? { assignedRole } : {}) }
     );
     return res.data.data;
   },

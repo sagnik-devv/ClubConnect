@@ -6,6 +6,7 @@ export const createClubSchema = z.object({
   description: z.string().trim().min(10).max(4000),
   shortDescription: z.string().trim().min(5).max(300),
   category: z.string().trim().min(2).max(80),
+  logo: z.string().trim().max(500).nullable().optional(),
   accentColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   mission: z.string().trim().max(2000).optional(),
   meetingSchedule: z.string().trim().max(200).optional(),

@@ -1,17 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Eye, FileText, Search } from 'lucide-react';
+import { ArrowRight, Eye, FileText, Search, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { PresidentLayout } from '../../components/president/PresidentLayout';
 import { usePresidentClub } from '../../context/PresidentClubContext';
+import { useAuth } from '../../context/AuthContext';
 import { presidentService } from '../../services/president.service';
 import { recruitmentService } from '../../services/recruitment.service';
+import { Avatar } from '../../components/common/Avatar';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { EmptyState, ErrorState, PageSkeleton } from '../../components/common/StateFeedback';
 import { getApiErrorMessage } from '../../services/api';
-import { ApplicationStatus, RecruitmentApplication } from '../../types';
+import { CLUB_ROLE_OPTIONS, formatClubRole, suggestClubRole } from '../../utils/clubRoles';
+import { ApplicationStatus, ClubRole, RecruitmentApplication } from '../../types';
 
 const STAGES: Array<{ key: ApplicationStatus; label: string }> = [
   { key: 'SUBMITTED', label: 'Submitted' },
@@ -22,6 +25,7 @@ const STAGES: Array<{ key: ApplicationStatus; label: string }> = [
 ];
 
 export const PresidentRecruitmentPage: React.FC = () => {
+  const { user } = useAuth();
   const { selectedClubId, selectedClub } = usePresidentClub();
   const queryClient = useQueryClient();
 
@@ -31,6 +35,19 @@ export const PresidentRecruitmentPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'pipeline' | 'list'>('pipeline');
   const [selectedApp, setSelectedApp] = useState<RecruitmentApplication | null>(null);
   const [notesDraft, setNotesDraft] = useState('');
+  const [assignRoleDraft, setAssignRoleDraft] = useState<ClubRole>('MEMBER');
+
+  const canAssignPresidentRole =
+    user?.globalRole === 'SUPER_ADMIN' || selectedClub?.myRole === 'PRESIDENT';
+  const assignableRoles = CLUB_ROLE_OPTIONS.filter(
+    (opt) => opt.value !== 'PRESIDENT' || canAssignPresidentRole
+  );
+
+  const openReviewModal = (app: RecruitmentApplication) => {
+    setSelectedApp(app);
+    setNotesDraft(app.reviewNotes || '');
+    setAssignRoleDraft(suggestClubRole(app.preferredRole, app.assignedRole));
+  };
 
   const {
     data: applications = [],
@@ -45,14 +62,34 @@ export const PresidentRecruitmentPage: React.FC = () => {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ApplicationStatus }) =>
-      presidentService.updateRecruitmentStatus(id, status),
+    mutationFn: ({
+      id,
+      status,
+      assignedRole,
+    }: {
+      id: string;
+      status: ApplicationStatus;
+      assignedRole?: ClubRole;
+    }) => presidentService.updateRecruitmentStatus(id, status, assignedRole),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ['president-recruitment', selectedClubId] });
       queryClient.invalidateQueries({ queryKey: ['president-dashboard', selectedClubId] });
-      toast.success(`Application moved to ${updated.status.replace('_', ' ')}`);
+      queryClient.invalidateQueries({ queryKey: ['president-members', selectedClubId] });
+      const roleNote =
+        updated.status === 'ACCEPTED' && updated.assignedRole
+          ? ` as ${formatClubRole(updated.assignedRole)}`
+          : '';
+      toast.success(`Application moved to ${updated.status.replace('_', ' ')}${roleNote}`);
       if (selectedApp?.id === updated.id) {
-        setSelectedApp((prev) => (prev ? { ...prev, status: updated.status } : prev));
+        setSelectedApp((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: updated.status,
+                assignedRole: updated.assignedRole ?? prev.assignedRole,
+              }
+            : prev
+        );
       }
     },
     onError: (err) => {
@@ -248,19 +285,37 @@ export const PresidentRecruitmentPage: React.FC = () => {
                         key={app.id}
                         className="p-3.5 rounded-[10px] bg-white border border-black/[0.08] space-y-2.5"
                       >
-                        <div>
-                          <div className="text-[14px] font-semibold text-black">
-                            {app.user?.fullName || 'Applicant'}
-                          </div>
-                          <div className="text-[12px] text-[#0075de] font-medium">
-                            {app.preferredRole}
-                          </div>
-                          {app.user?.department && (
-                            <div className="text-[11px] text-[#757575] mt-0.5">
-                              {app.user.department} {app.user.yearOfStudy ? `· ${app.user.yearOfStudy}` : ''}
+                        <div className="flex items-start gap-2.5">
+                          <Avatar
+                            initials={(app.user?.fullName || 'AP')
+                              .split(' ')
+                              .map((p) => p[0])
+                              .join('')
+                              .slice(0, 2)
+                              .toUpperCase()}
+                            profileImage={app.user?.profileImage}
+                            seed={app.user?.id || app.userId}
+                            size="sm"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[14px] font-semibold text-black truncate">
+                              {app.user?.fullName || 'Applicant'}
                             </div>
-                          )}
+                            <div className="text-[12px] text-[#0075de] font-medium truncate">
+                              {app.preferredRole}
+                            </div>
+                            {app.user?.department && (
+                              <div className="text-[11px] text-[#757575] mt-0.5 truncate">
+                                {app.user.department} {app.user.yearOfStudy ? `· ${app.user.yearOfStudy}` : ''}
+                              </div>
+                            )}
+                          </div>
                         </div>
+                        {app.status === 'ACCEPTED' && app.assignedRole && (
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="blue">Role: {formatClubRole(app.assignedRole)}</Badge>
+                          </div>
+                        )}
                         <p className="text-[12px] text-[#615d59] line-clamp-2">{app.motivation}</p>
                         <div className="flex flex-wrap gap-1">
                           {app.skills.slice(0, 3).map((s) => (
@@ -276,10 +331,7 @@ export const PresidentRecruitmentPage: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              setSelectedApp(app);
-                              setNotesDraft(app.reviewNotes || '');
-                            }}
+                            onClick={() => openReviewModal(app)}
                           >
                             <Eye className="w-3.5 h-3.5" />
                             Review
@@ -288,12 +340,17 @@ export const PresidentRecruitmentPage: React.FC = () => {
                             <select
                               aria-label={`Change stage for ${app.user?.fullName}`}
                               value={app.status}
-                              onChange={(e) =>
+                              onChange={(e) => {
+                                const nextStatus = e.target.value as ApplicationStatus;
+                                if (nextStatus === 'ACCEPTED') {
+                                  openReviewModal(app);
+                                  return;
+                                }
                                 statusMutation.mutate({
                                   id: app.id,
-                                  status: e.target.value as ApplicationStatus,
-                                })
-                              }
+                                  status: nextStatus,
+                                });
+                              }}
                               className="h-7 px-1.5 rounded-[6px] border border-black/10 text-[11px] bg-[#faf9f8]"
                             >
                               {STAGES.map((st) => (
@@ -329,12 +386,34 @@ export const PresidentRecruitmentPage: React.FC = () => {
               {filtered.map((app) => (
                 <tr key={app.id} className="hover:bg-[#faf9f8]">
                   <td className="py-3.5 px-4">
-                    <div className="font-semibold text-black">{app.user?.fullName || 'Applicant'}</div>
-                    <div className="text-[12px] text-[#757575]">
-                      {app.user?.email} {app.user?.department ? `· ${app.user.department}` : ''}
+                    <div className="flex items-center gap-2.5">
+                      <Avatar
+                        initials={(app.user?.fullName || 'AP')
+                          .split(' ')
+                          .map((p) => p[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                        profileImage={app.user?.profileImage}
+                        seed={app.user?.id || app.userId}
+                        size="sm"
+                      />
+                      <div>
+                        <div className="font-semibold text-black">{app.user?.fullName || 'Applicant'}</div>
+                        <div className="text-[12px] text-[#757575]">
+                          {app.user?.email} {app.user?.department ? `· ${app.user.department}` : ''}
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td className="py-3.5 px-4 font-medium text-black">{app.preferredRole}</td>
+                  <td className="py-3.5 px-4 font-medium text-black">
+                    <div>{app.preferredRole}</div>
+                    {app.status === 'ACCEPTED' && app.assignedRole && (
+                      <Badge variant="blue" className="mt-1">
+                        Assigned: {formatClubRole(app.assignedRole)}
+                      </Badge>
+                    )}
+                  </td>
                   <td className="py-3.5 px-4">
                     <div className="flex flex-wrap gap-1 max-w-[220px]">
                       {app.skills.slice(0, 4).map((s) => (
@@ -356,10 +435,7 @@ export const PresidentRecruitmentPage: React.FC = () => {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => {
-                        setSelectedApp(app);
-                        setNotesDraft(app.reviewNotes || '');
-                      }}
+                      onClick={() => openReviewModal(app)}
                     >
                       Open Review
                     </Button>
@@ -470,22 +546,72 @@ export const PresidentRecruitmentPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Assign Role & Accept */}
+            <div className="p-4 rounded-[10px] bg-[#e6f3fe]/45 border border-[#0075de]/25 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <label
+                    htmlFor="assign-recruit-role"
+                    className="text-[13px] font-semibold text-black flex items-center gap-1.5"
+                  >
+                    <Shield className="w-4 h-4 text-[#0075de]" />
+                    Assign Club Role to Recruit
+                  </label>
+                  <p className="text-[12px] text-[#615d59] mt-0.5">
+                    Applied for <strong className="text-black">{selectedApp.preferredRole}</strong>. Choose their official club role upon acceptance.
+                  </p>
+                </div>
+                {selectedApp.status === 'ACCEPTED' && selectedApp.assignedRole && (
+                  <Badge variant="blue">Current: {formatClubRole(selectedApp.assignedRole)}</Badge>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <select
+                  id="assign-recruit-role"
+                  value={assignRoleDraft}
+                  onChange={(e) => setAssignRoleDraft(e.target.value as ClubRole)}
+                  className="flex-1 h-10 px-3 rounded-[8px] border border-black/15 bg-white text-[14px] font-medium"
+                >
+                  {assignableRoles.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={
+                    statusMutation.isPending ||
+                    (selectedApp.status === 'ACCEPTED' &&
+                      selectedApp.assignedRole === assignRoleDraft)
+                  }
+                  onClick={() =>
+                    statusMutation.mutate({
+                      id: selectedApp.id,
+                      status: 'ACCEPTED',
+                      assignedRole: assignRoleDraft,
+                    })
+                  }
+                >
+                  {selectedApp.status === 'ACCEPTED'
+                    ? 'Update Assigned Role'
+                    : `Accept as ${formatClubRole(assignRoleDraft)}`}
+                </Button>
+              </div>
+            </div>
+
             {/* Stage Transitions */}
             <div className="pt-3 border-t border-black/[0.08] flex flex-wrap items-center justify-between gap-2">
               <div className="text-[12px] font-medium text-[#757575] flex items-center gap-1">
                 Move Pipeline Stage <ArrowRight className="w-3.5 h-3.5" />
               </div>
               <div className="flex flex-wrap gap-2">
-                {STAGES.map((stage) => (
+                {STAGES.filter((s) => s.key !== 'ACCEPTED').map((stage) => (
                   <Button
                     key={stage.key}
-                    variant={
-                      stage.key === 'ACCEPTED'
-                        ? 'primary'
-                        : stage.key === 'REJECTED'
-                          ? 'ghost'
-                          : 'secondary'
-                    }
+                    variant={stage.key === 'REJECTED' ? 'ghost' : 'secondary'}
                     size="sm"
                     disabled={
                       statusMutation.isPending || selectedApp.status === stage.key

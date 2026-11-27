@@ -10,7 +10,12 @@ import { PresidentAuthorizedClub, presidentService } from '../../services/presid
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
-import { ClubLogoMark } from '../../components/common/CharacterMarks';
+import {
+  CLUB_AVATAR_PREFIX,
+  ClubAvatarPicker,
+  ClubLogoMark,
+  getClubAvatarByValue,
+} from '../../components/common/CharacterMarks';
 import { EmptyState, ErrorState, PageSkeleton } from '../../components/common/StateFeedback';
 import { getApiErrorMessage } from '../../services/api';
 
@@ -24,6 +29,7 @@ interface ClubEditValues {
   expectedTimeCommitment: string;
   requirementsText: string;
   logo: string;
+  accentColor: string;
   coverImage: string;
   isRecruiting: boolean;
 }
@@ -39,7 +45,9 @@ export const PresidentClubsPage: React.FC = () => {
     queryFn: presidentService.listAuthorizedClubs,
   });
 
-  const { register, handleSubmit, reset } = useForm<ClubEditValues>();
+  const { register, handleSubmit, reset, watch, setValue } = useForm<ClubEditValues>();
+  const watchedLogo = watch('logo');
+  const watchedAccentColor = watch('accentColor');
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
@@ -58,6 +66,7 @@ export const PresidentClubsPage: React.FC = () => {
 
   const openEdit = (club: PresidentAuthorizedClub) => {
     setEditingClub(club);
+    const fallbackAvatar = `${CLUB_AVATAR_PREFIX}${getClubAvatarByValue(club.logo, club.slug).id}`;
     reset({
       name: club.name,
       shortDescription: club.shortDescription,
@@ -67,7 +76,8 @@ export const PresidentClubsPage: React.FC = () => {
       meetingSchedule: club.meetingSchedule || '',
       expectedTimeCommitment: club.expectedTimeCommitment || '',
       requirementsText: (club.requirements || []).join('\n'),
-      logo: club.logo || '',
+      logo: club.logo || fallbackAvatar,
+      accentColor: club.accentColor || '#e6f3fe',
       coverImage: club.coverImage || '',
       isRecruiting: club.isRecruiting,
     });
@@ -90,6 +100,7 @@ export const PresidentClubsPage: React.FC = () => {
           .map((r) => r.trim())
           .filter(Boolean),
         logo: vals.logo.trim() || null,
+        accentColor: vals.accentColor || '#e6f3fe',
         coverImage: vals.coverImage.trim() || null,
         isRecruiting: vals.isRecruiting,
       },
@@ -134,6 +145,7 @@ export const PresidentClubsPage: React.FC = () => {
                     <div className="flex items-center gap-3.5">
                       <ClubLogoMark
                         clubId={club.slug}
+                        logo={club.logo}
                         accentColor={club.accentColor || '#e6f3fe'}
                         size={48}
                       />
@@ -205,6 +217,13 @@ export const PresidentClubsPage: React.FC = () => {
         subtitle="Changes persist directly in PostgreSQL and appear in the Member Portal."
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <ClubAvatarPicker
+            clubSlug={editingClub?.slug || 'club'}
+            selectedLogo={watchedLogo}
+            selectedTint={watchedAccentColor || '#e6f3fe'}
+            onSelectLogo={(logo) => setValue('logo', logo, { shouldDirty: true })}
+            onSelectTint={(color) => setValue('accentColor', color, { shouldDirty: true })}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-[13px] font-medium mb-1">Club Name</label>
@@ -272,9 +291,12 @@ export const PresidentClubsPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[13px] font-medium mb-1">Logo URL (optional)</label>
+              <label className="block text-[13px] font-medium mb-1">
+                Custom Logo URL or Preset ID
+              </label>
               <input
                 type="text"
+                placeholder="club-avatar:code or https://..."
                 {...register('logo')}
                 className="w-full px-3 py-2 rounded-[8px] border border-black/15 text-[14px]"
               />

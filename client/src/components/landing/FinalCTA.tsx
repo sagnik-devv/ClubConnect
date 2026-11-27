@@ -6,6 +6,11 @@ import { ArrowRight, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { AnimatedHeadline } from '../animations/AnimatedHeadline';
 import { Button } from '../common/Button';
+import {
+  CLUB_AVATARS,
+  CLUB_AVATAR_PREFIX,
+  ClubAvatarPicker,
+} from '../common/CharacterMarks';
 import { Modal } from '../common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { clubService } from '../../services/club.service';
@@ -26,6 +31,10 @@ export const FinalCTA: React.FC = () => {
   const queryClient = useQueryClient();
   const { isAuthenticated, refreshSession } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedLogo, setSelectedLogo] = useState<string>(
+    () => `${CLUB_AVATAR_PREFIX}${CLUB_AVATARS[4].id}`
+  );
+  const [selectedTint, setSelectedTint] = useState<string>(CLUB_AVATARS[4].defaultTint);
 
   const {
     register,
@@ -68,6 +77,8 @@ export const FinalCTA: React.FC = () => {
     createMutation.mutate({
       name: values.name.trim(),
       category: values.category,
+      logo: selectedLogo,
+      accentColor: selectedTint,
       shortDescription: values.shortDescription.trim(),
       description: values.description.trim(),
       expectedTimeCommitment: values.expectedTimeCommitment.trim(),
@@ -113,6 +124,12 @@ export const FinalCTA: React.FC = () => {
         subtitle="Set clear expectations from day one so new members know what they are joining."
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <ClubAvatarPicker
+            selectedLogo={selectedLogo}
+            selectedTint={selectedTint}
+            onSelectLogo={setSelectedLogo}
+            onSelectTint={setSelectedTint}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="club-name" className="block text-[13px] font-medium mb-1">

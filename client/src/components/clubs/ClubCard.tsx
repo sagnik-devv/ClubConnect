@@ -16,7 +16,12 @@ export const ClubCard: React.FC<ClubCardProps> = ({ club, viewMode, isJoined }) 
     return (
       <article className="notion-card p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-black/20">
         <div className="flex items-start gap-4 min-w-0">
-          <ClubLogoMark clubId={club.slug} accentColor={club.accentColor || '#e6f3fe'} size={52} />
+          <ClubLogoMark
+            clubId={club.slug}
+            logo={club.logo}
+            accentColor={club.accentColor || '#e6f3fe'}
+            size={52}
+          />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[19px] font-bold text-black tracking-[-0.015em]">
@@ -69,7 +74,12 @@ export const ClubCard: React.FC<ClubCardProps> = ({ club, viewMode, isJoined }) 
     <article className="notion-card p-6 h-full flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:border-black/20">
       <div>
         <div className="flex items-start justify-between gap-3">
-          <ClubLogoMark clubId={club.slug} accentColor={club.accentColor || '#e6f3fe'} size={48} />
+          <ClubLogoMark
+            clubId={club.slug}
+            logo={club.logo}
+            accentColor={club.accentColor || '#e6f3fe'}
+            size={48}
+          />
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             {isJoined && <Badge variant="green">Joined</Badge>}
             <Badge variant={club.isRecruiting ? 'blue' : 'neutral'}>

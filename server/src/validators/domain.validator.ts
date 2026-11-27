@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   ApplicationStatus,
+  ClubRole,
   ContributionStatus,
   ContributionType,
   EventStatus,
@@ -82,6 +83,7 @@ export const createApplicationSchema = z.object({
 export const updateApplicationStatusSchema = z.object({
   status: z.nativeEnum(ApplicationStatus),
   onboardingStep: z.coerce.number().int().min(1).max(6).optional(),
+  assignedRole: z.nativeEnum(ClubRole).optional(),
 });
 
 export const updateApplicationNotesSchema = z.object({

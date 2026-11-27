@@ -200,6 +200,7 @@ export interface RecruitmentApplication {
   skills: string[];
   experience: string | null;
   preferredRole: string;
+  assignedRole?: ClubRole | null;
   status: ApplicationStatus;
   reviewNotes: string | null;
   onboardingStep: number;
@@ -219,6 +220,7 @@ export interface RecruitmentApplication {
     department?: string | null;
     course?: string | null;
     yearOfStudy?: string | null;
+    profileImage?: string | null;
   };
   reviewedBy?: { id: string; fullName: string } | null;
 }

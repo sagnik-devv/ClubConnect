@@ -8,6 +8,11 @@ import { MainLayout } from '../layouts/MainLayout';
 import { AnimatedHeadline } from '../components/animations/AnimatedHeadline';
 import { ClubCard } from '../components/clubs/ClubCard';
 import { Button } from '../components/common/Button';
+import {
+  CLUB_AVATARS,
+  CLUB_AVATAR_PREFIX,
+  ClubAvatarPicker,
+} from '../components/common/CharacterMarks';
 import { Modal } from '../components/common/Modal';
 import { EmptyState, ErrorState, PageSkeleton } from '../components/common/StateFeedback';
 import { clubService } from '../services/club.service';
@@ -52,6 +57,10 @@ export const DiscoverClubsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedLogo, setSelectedLogo] = useState<string>(
+    () => `${CLUB_AVATAR_PREFIX}${CLUB_AVATARS[0].id}`
+  );
+  const [selectedTint, setSelectedTint] = useState<string>(CLUB_AVATARS[0].defaultTint);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['clubs', { search, selectedCategory, selectedStatus, sortBy, page }],
@@ -97,6 +106,8 @@ export const DiscoverClubsPage: React.FC = () => {
     createMutation.mutate({
       name: values.name.trim(),
       category: values.category,
+      logo: selectedLogo,
+      accentColor: selectedTint,
       shortDescription: values.shortDescription.trim(),
       description: values.description.trim(),
       expectedTimeCommitment: values.expectedTimeCommitment.trim(),
@@ -366,6 +377,12 @@ export const DiscoverClubsPage: React.FC = () => {
         subtitle="You will be registered as this club's initial President."
       >
         <form onSubmit={handleSubmit(onCreateSubmit)} className="space-y-4">
+          <ClubAvatarPicker
+            selectedLogo={selectedLogo}
+            selectedTint={selectedTint}
+            onSelectLogo={setSelectedLogo}
+            onSelectTint={setSelectedTint}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="dc-name" className="block text-[13px] font-medium mb-1">

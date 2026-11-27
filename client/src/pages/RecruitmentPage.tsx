@@ -5,18 +5,23 @@ import { toast } from 'sonner';
 import { WorkspaceLayout } from '../layouts/WorkspaceLayout';
 import { recruitmentService } from '../services/recruitment.service';
 import { ONBOARDING_STEPS } from '../utils/onboardingSteps';
+import { useAuth } from '../context/AuthContext';
+import { CLUB_ROLE_OPTIONS, formatClubRole, suggestClubRole } from '../utils/clubRoles';
+import { Avatar } from '../components/common/Avatar';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { Modal } from '../components/common/Modal';
 import { EmptyState, ErrorState, PageSkeleton } from '../components/common/StateFeedback';
 import { getApiErrorMessage } from '../services/api';
-import { ApplicationStatus, RecruitmentApplication } from '../types';
+import { ApplicationStatus, ClubRole, RecruitmentApplication } from '../types';
 
 export const RecruitmentPage: React.FC = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedMyAppId, setSelectedMyAppId] = useState<string>('');
   const [notesModalApp, setNotesModalApp] = useState<RecruitmentApplication | null>(null);
   const [notesDraft, setNotesDraft] = useState('');
+  const [roleDrafts, setRoleDrafts] = useState<Record<string, ClubRole>>({});
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['recruitment'],
@@ -24,12 +29,25 @@ export const RecruitmentPage: React.FC = () => {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ApplicationStatus }) =>
-      recruitmentService.updateStatus(id, status),
-    onSuccess: () => {
+    mutationFn: ({
+      id,
+      status,
+      assignedRole,
+    }: {
+      id: string;
+      status: ApplicationStatus;
+      assignedRole?: ClubRole;
+    }) => recruitmentService.updateStatus(id, status, undefined, assignedRole),
+    onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ['recruitment'] });
       queryClient.invalidateQueries({ queryKey: ['club-stats'] });
-      toast.success('Application status updated');
+      queryClient.invalidateQueries({ queryKey: ['president-recruitment'] });
+      queryClient.invalidateQueries({ queryKey: ['president-members'] });
+      const roleNote =
+        updated.status === 'ACCEPTED' && updated.assignedRole
+          ? ` as ${formatClubRole(updated.assignedRole)}`
+          : '';
+      toast.success(`Application status updated${roleNote}`);
     },
     onError: (err) => {
       toast.error(getApiErrorMessage(err, 'Could not update application status'));
@@ -143,6 +161,11 @@ export const RecruitmentPage: React.FC = () => {
                     </select>
                   )}
                   <Badge variant={statusBadge(activeMyApp.status)}>{activeMyApp.status}</Badge>
+                  {activeMyApp.status === 'ACCEPTED' && activeMyApp.assignedRole && (
+                    <Badge variant="blue">
+                      Role: {formatClubRole(activeMyApp.assignedRole)}
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -214,17 +237,48 @@ export const RecruitmentPage: React.FC = () => {
                   <th className="py-3 px-5">Candidate</th>
                   <th className="py-3 px-4">Club & Role</th>
                   <th className="py-3 px-4">Motivation</th>
+                  <th className="py-3 px-4">Assign Role</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-5 text-right">Notes</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/[0.06] text-[14px]">
-                {manageableApplications.map((app) => (
+                {manageableApplications.map((app) => {
+                  const selectedRole =
+                    roleDrafts[app.id] ?? suggestClubRole(app.preferredRole, app.assignedRole);
+                  const isClubPresident =
+                    user?.globalRole === 'SUPER_ADMIN' ||
+                    user?.memberships.some(
+                      (m) =>
+                        m.clubId === app.clubId &&
+                        m.status === 'ACTIVE' &&
+                        m.role === 'PRESIDENT'
+                    );
+                  const roleChoices = CLUB_ROLE_OPTIONS.filter(
+                    (opt) => opt.value !== 'PRESIDENT' || isClubPresident
+                  );
+
+                  return (
                   <tr key={app.id} className="hover:bg-[#f6f5f4]/60">
                     <td className="py-3.5 px-5">
-                      <div className="font-semibold text-black">{app.user?.fullName}</div>
-                      <div className="text-[12px] text-[#757575]">
-                        {app.user?.department} {app.user?.yearOfStudy ? `· ${app.user.yearOfStudy}` : ''}
+                      <div className="flex items-center gap-2.5">
+                        <Avatar
+                          initials={(app.user?.fullName || 'AP')
+                            .split(' ')
+                            .map((p) => p[0])
+                            .join('')
+                            .slice(0, 2)
+                            .toUpperCase()}
+                          profileImage={app.user?.profileImage}
+                          seed={app.user?.id || app.userId}
+                          size="sm"
+                        />
+                        <div>
+                          <div className="font-semibold text-black">{app.user?.fullName}</div>
+                          <div className="text-[12px] text-[#757575]">
+                            {app.user?.department} {app.user?.yearOfStudy ? `· ${app.user.yearOfStudy}` : ''}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
@@ -236,14 +290,40 @@ export const RecruitmentPage: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-4">
                       <select
+                        aria-label={`Assign role for ${app.user?.fullName}`}
+                        value={selectedRole}
+                        onChange={(e) => {
+                          const nextRole = e.target.value as ClubRole;
+                          setRoleDrafts((prev) => ({ ...prev, [app.id]: nextRole }));
+                          if (app.status === 'ACCEPTED') {
+                            statusMutation.mutate({
+                              id: app.id,
+                              status: 'ACCEPTED',
+                              assignedRole: nextRole,
+                            });
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded-[6px] border border-black/15 bg-white text-[12px] font-medium"
+                      >
+                        {roleChoices.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <select
                         aria-label={`Status for ${app.user?.fullName}`}
                         value={app.status}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const nextStatus = e.target.value as ApplicationStatus;
                           statusMutation.mutate({
                             id: app.id,
-                            status: e.target.value as ApplicationStatus,
-                          })
-                        }
+                            status: nextStatus,
+                            assignedRole: nextStatus === 'ACCEPTED' ? selectedRole : undefined,
+                          });
+                        }}
                         className="px-2.5 py-1 rounded-[6px] border border-black/15 bg-white text-[12px] font-medium"
                       >
                         <option value="SUBMITTED">Submitted</option>
@@ -267,7 +347,8 @@ export const RecruitmentPage: React.FC = () => {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

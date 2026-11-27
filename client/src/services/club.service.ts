@@ -42,6 +42,7 @@ export const clubService = {
     description: string;
     shortDescription: string;
     category: string;
+    logo?: string | null;
     accentColor?: string;
     mission?: string;
     meetingSchedule?: string;

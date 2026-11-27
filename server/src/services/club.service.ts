@@ -198,6 +198,17 @@ export async function getClubByIdOrSlug(idOrSlug: string, currentUserId?: string
   };
 }
 
+const DEFAULT_CLUB_AVATARS = [
+  'club-avatar:code',
+  'club-avatar:robo',
+  'club-avatar:lens',
+  'club-avatar:music',
+  'club-avatar:rocket',
+  'club-avatar:palette',
+  'club-avatar:bolt',
+  'club-avatar:trophy',
+];
+
 export async function createClub(
   creatorId: string,
   data: {
@@ -205,6 +216,7 @@ export async function createClub(
     description: string;
     shortDescription: string;
     category: string;
+    logo?: string | null;
     accentColor?: string;
     mission?: string;
     meetingSchedule?: string;
@@ -217,11 +229,14 @@ export async function createClub(
   }
 ) {
   const slug = await generateUniqueSlug(data.name);
+  const defaultLogo =
+    data.logo ?? DEFAULT_CLUB_AVATARS[Math.floor(Math.random() * DEFAULT_CLUB_AVATARS.length)];
 
   return prisma.$transaction(async (tx) => {
     const club = await tx.club.create({
       data: {
         ...data,
+        logo: defaultLogo,
         slug,
         createdById: creatorId,
       },

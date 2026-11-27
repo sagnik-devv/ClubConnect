@@ -169,10 +169,13 @@ describe('ClubConnect Full-Stack API Integration Tests', () => {
           shortDescription: 'Build real campus software together.',
           description: 'Collaborative engineering club building open-source student utilities.',
           category: 'Technology',
+          logo: 'club-avatar:code',
+          accentColor: '#e6f3fe',
           expectedTimeCommitment: '4 hrs/week',
           isRecruiting: true,
         });
       expect(clubRes.status).toBe(201);
+      expect(clubRes.body.data.logo).toBe('club-avatar:code');
       clubId = clubRes.body.data.id;
 
       const secondClubRes = await outsiderAgent
@@ -225,19 +228,39 @@ describe('ClubConnect Full-Stack API Integration Tests', () => {
         .send({ status: 'ACCEPTED' });
       expect(selfApprove.status).toBe(403);
 
-      // President accepts application -> creates single active membership
+      // President accepts application and assigns COORDINATOR role -> creates single active membership
       const acceptRes = await presidentAgent
         .patch(`/api/recruitment/${applicationId}/status`)
         .set('X-CSRF-Token', presidentCsrf)
-        .send({ status: 'ACCEPTED' });
+        .send({ status: 'ACCEPTED', assignedRole: 'COORDINATOR' });
       expect(acceptRes.status).toBe(200);
       expect(acceptRes.body.data.status).toBe('ACCEPTED');
+      expect(acceptRes.body.data.assignedRole).toBe('COORDINATOR');
 
       const memberships = await prisma.clubMembership.findMany({
         where: { userId: studentId, clubId },
       });
       expect(memberships).toHaveLength(1);
       expect(memberships[0].status).toBe('ACTIVE');
+      expect(memberships[0].role).toBe('COORDINATOR');
+
+      // President recruitment listing reflects assignedRole and allows updating back to MEMBER
+      const listRecruitRes = await presidentAgent.get(`/api/president/clubs/${clubId}/recruitment`);
+      expect(listRecruitRes.status).toBe(200);
+      const listedApp = listRecruitRes.body.data.find((a: { id: string }) => a.id === applicationId);
+      expect(listedApp.assignedRole).toBe('COORDINATOR');
+
+      const reassignRes = await presidentAgent
+        .patch(`/api/president/recruitment/${applicationId}/status`)
+        .set('X-CSRF-Token', presidentCsrf)
+        .send({ status: 'ACCEPTED', assignedRole: 'MEMBER' });
+      expect(reassignRes.status).toBe(200);
+      expect(reassignRes.body.data.assignedRole).toBe('MEMBER');
+
+      const updatedMembership = await prisma.clubMembership.findUniqueOrThrow({
+        where: { userId_clubId: { userId: studentId, clubId } },
+      });
+      expect(updatedMembership.role).toBe('MEMBER');
     });
 
     it('handles direct join requests and allows leaving a club', async () => {

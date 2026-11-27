@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { Shuffle } from 'lucide-react';
 
 export interface CharacterSpec {
   id: string;
@@ -297,117 +298,336 @@ export const FlowerDoodle: React.FC<{ color?: string; className?: string }> = ({
   );
 };
 
+export interface ClubAvatarSpec {
+  id: 'code' | 'robo' | 'lens' | 'music' | 'rocket' | 'palette' | 'bolt' | 'trophy';
+  label: string;
+  defaultTint: string;
+}
+
+export const CLUB_AVATAR_PREFIX = 'club-avatar:';
+
+export const CLUB_AVATARS: ClubAvatarSpec[] = [
+  { id: 'code', label: 'Code Bot', defaultTint: '#e6f3fe' },
+  { id: 'robo', label: 'Mecha Bot', defaultTint: '#fff4d6' },
+  { id: 'lens', label: 'Shutter Bug', defaultTint: '#ffe8e4' },
+  { id: 'music', label: 'Beat Vibe', defaultTint: '#e6f3fe' },
+  { id: 'rocket', label: 'Launchpad', defaultTint: '#f3efff' },
+  { id: 'palette', label: 'Art Studio', defaultTint: '#f6d5b8' },
+  { id: 'bolt', label: 'Spark Lab', defaultTint: '#fff4d6' },
+  { id: 'trophy', label: 'Campus Crew', defaultTint: '#e9f7ef' },
+];
+
+export const CLUB_ACCENT_SWATCHES: Array<{ color: string; label: string }> = [
+  { color: '#e6f3fe', label: 'Sky Tint' },
+  { color: '#fff4d6', label: 'Sunbeam' },
+  { color: '#ffe8e4', label: 'Coral Mist' },
+  { color: '#e9f7ef', label: 'Mint Leaf' },
+  { color: '#f3efff', label: 'Lavender' },
+  { color: '#f6d5b8', label: 'Warm Peach' },
+  { color: '#02093a', label: 'Midnight' },
+  { color: '#ffffff', label: 'Crisp White' },
+];
+
+const SLUG_TO_CLUB_AVATAR: Record<string, ClubAvatarSpec['id']> = {
+  'coding-club': 'code',
+  'robotics-society': 'robo',
+  'photography-club': 'lens',
+  'entrepreneurship-cell': 'rocket',
+  'cultural-society': 'music',
+  'music-society': 'music',
+  'design-club': 'palette',
+  'innovation-club': 'bolt',
+  'ai-ml-club': 'bolt',
+  'sports-club': 'trophy',
+  'debate-society': 'trophy',
+  'literary-society': 'palette',
+};
+
+export function getClubAvatarByValue(
+  logo?: string | null,
+  slugFallback = 'club'
+): ClubAvatarSpec {
+  if (logo && logo.startsWith(CLUB_AVATAR_PREFIX)) {
+    const id = logo.slice(CLUB_AVATAR_PREFIX.length);
+    const matched = CLUB_AVATARS.find((a) => a.id === id);
+    if (matched) return matched;
+  }
+  const slugMatch = SLUG_TO_CLUB_AVATAR[slugFallback];
+  if (slugMatch) {
+    return CLUB_AVATARS.find((a) => a.id === slugMatch) ?? CLUB_AVATARS[0];
+  }
+  let hash = 0;
+  for (let i = 0; i < slugFallback.length; i += 1) {
+    hash = (hash * 31 + slugFallback.charCodeAt(i)) >>> 0;
+  }
+  return CLUB_AVATARS[hash % CLUB_AVATARS.length];
+}
+
+const ClubMascotSvg: React.FC<{ id: ClubAvatarSpec['id']; onDark?: boolean }> = ({
+  id,
+  onDark = false,
+}) => {
+  const stroke = onDark ? '#ffffff' : '#111111';
+  switch (id) {
+    case 'code':
+      return (
+        <svg viewBox="0 0 40 40" className="w-[74%] h-[74%]" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="20" y1="4.5" x2="20" y2="8.5" stroke={stroke} strokeWidth="2" />
+          <circle cx="20" cy="4" r="2.2" fill="#ffb110" stroke={stroke} strokeWidth="1.5" />
+          <rect x="7" y="9" width="26" height="21" rx="6" fill="#ffffff" stroke={stroke} strokeWidth="2" />
+          <rect x="10.5" y="12.5" width="19" height="14" rx="3.5" fill="#0075de" />
+          <path d="M16 17 L13.5 19.5 L16 22" stroke="#ffffff" strokeWidth="2" />
+          <path d="M24 17 L26.5 19.5 L24 22" stroke="#ffffff" strokeWidth="2" />
+          <path d="M18.2 22.8 C19.5 24, 20.5 24, 21.8 22.8" stroke="#ffb110" strokeWidth="1.8" />
+          <path d="M15 33.5 H25" stroke={stroke} strokeWidth="2.2" />
+        </svg>
+      );
+    case 'robo':
+      return (
+        <svg viewBox="0 0 40 40" className="w-[74%] h-[74%]" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="20" y1="4" x2="20" y2="9" stroke={stroke} strokeWidth="2" />
+          <circle cx="20" cy="4" r="2.2" fill="#f64932" stroke={stroke} strokeWidth="1.5" />
+          <rect x="5" y="16" width="3.5" height="8" rx="1.5" fill="#62aef0" stroke={stroke} strokeWidth="1.5" />
+          <rect x="31.5" y="16" width="3.5" height="8" rx="1.5" fill="#62aef0" stroke={stroke} strokeWidth="1.5" />
+          <rect x="8.5" y="9.5" width="23" height="22" rx="6.5" fill="#ffb110" stroke={stroke} strokeWidth="2" />
+          <circle cx="15.5" cy="18.5" r="2.5" fill="#ffffff" stroke={stroke} strokeWidth="1.6" />
+          <circle cx="24.5" cy="18.5" r="2.5" fill="#ffffff" stroke={stroke} strokeWidth="1.6" />
+          <circle cx="15.5" cy="18.5" r="1" fill="#111111" />
+          <circle cx="24.5" cy="18.5" r="1" fill="#111111" />
+          <path d="M15 25 C17.5 27.5, 22.5 27.5, 25 25" stroke="#111111" strokeWidth="2" />
+        </svg>
+      );
+    case 'lens':
+      return (
+        <svg viewBox="0 0 40 40" className="w-[74%] h-[74%]" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 9 L16 6 H24 L26 9" fill="#ffb110" stroke={stroke} strokeWidth="1.8" />
+          <rect x="6" y="9.5" width="28" height="22" rx="6" fill="#f64932" stroke={stroke} strokeWidth="2" />
+          <circle cx="29.5" cy="14" r="1.8" fill="#ffb110" />
+          <circle cx="20" cy="21" r="8" fill="#ffffff" stroke={stroke} strokeWidth="2" />
+          <circle cx="17.6" cy="19.8" r="1.3" fill="#111111" />
+          <circle cx="22.4" cy="19.8" r="1.3" fill="#111111" />
+          <path d="M17.5 23 C19 24.7, 21 24.7, 22.5 23" stroke="#111111" strokeWidth="1.7" />
+        </svg>
+      );
+    case 'music':
+      return (
+        <svg viewBox="0 0 40 40" className="w-[74%] h-[74%]" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8.5 22 C8.5 11, 31.5 11, 31.5 22" stroke={stroke} strokeWidth="2.4" />
+          <rect x="6" y="19.5" width="5" height="9.5" rx="2.5" fill="#ffb110" stroke={stroke} strokeWidth="1.8" />
+          <rect x="29" y="19.5" width="5" height="9.5" rx="2.5" fill="#ffb110" stroke={stroke} strokeWidth="1.8" />
+          <circle cx="20" cy="23.5" r="9.5" fill="#62aef0" stroke={stroke} strokeWidth="2" />
+          <circle cx="17" cy="22.5" r="1.3" fill="#111111" />
+          <circle cx="23" cy="22.5" r="1.3" fill="#111111" />
+          <path d="M17 26.2 C18.8 28, 21.2 28, 23 26.2" stroke="#111111" strokeWidth="1.8" />
+        </svg>
+      );
+    case 'rocket':
+      return (
+        <svg viewBox="0 0 40 40" className="w-[74%] h-[74%]" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 29 L14 35 L20 32 L26 35 L24 29" fill="#ffb110" stroke={stroke} strokeWidth="1.6" />
+          <path d="M12 24 L7 27 L11 19" fill="#f64932" stroke={stroke} strokeWidth="1.8" />
+          <path d="M28 24 L33 27 L29 19" fill="#f64932" stroke={stroke} strokeWidth="1.8" />
+          <path d="M20 5 C26.5 10.5, 27.5 20.5, 25 28 H15 C12.5 20.5, 13.5 10.5, 20 5 Z" fill="#ffffff" stroke={stroke} strokeWidth="2" />
+          <circle cx="20" cy="16.5" r="4.5" fill="#0075de" stroke={stroke} strokeWidth="1.6" />
+          <circle cx="18.6" cy="15.8" r="0.9" fill="#ffffff" />
+          <circle cx="21.4" cy="15.8" r="0.9" fill="#ffffff" />
+          <path d="M18.5 18 C19.5 19, 20.5 19, 21.5 18" stroke="#ffffff" strokeWidth="1.3" />
+        </svg>
+      );
+    case 'palette':
+      return (
+        <svg viewBox="0 0 40 40" className="w-[74%] h-[74%]" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path
+            d="M20 7 C11.5 7, 6 12.5, 6 20 C6 27.5, 11.5 33, 19.5 33 C22.5 33, 24 31, 24 29 C24 27.2, 22.8 26.2, 24.5 25 C26.5 23.6, 34 25.2, 34 19 C34 12, 27.8 7, 20 7 Z"
+            fill="#ffffff"
+            stroke={stroke}
+            strokeWidth="2"
+          />
+          <circle cx="13" cy="15" r="2.2" fill="#f64932" />
+          <circle cx="20" cy="12" r="2.2" fill="#ffb110" />
+          <circle cx="27" cy="15" r="2.2" fill="#0075de" />
+          <circle cx="14.5" cy="22.5" r="1.2" fill="#111111" />
+          <circle cx="20.5" cy="22.5" r="1.2" fill="#111111" />
+          <path d="M15.5 25.8 C17 27.2, 18.5 27.2, 19.8 25.8" stroke="#111111" strokeWidth="1.6" />
+        </svg>
+      );
+    case 'bolt':
+      return (
+        <svg viewBox="0 0 40 40" className="w-[74%] h-[74%]" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 4 L10 21 H19 L17 36 L30 18 H21 L22 4 Z" fill="#ffb110" stroke={stroke} strokeWidth="2" />
+          <circle cx="17.8" cy="16.5" r="1.1" fill="#111111" />
+          <circle cx="22" cy="16.5" r="1.1" fill="#111111" />
+          <path d="M18.2 19.2 C19.4 20.3, 20.6 20.3, 21.8 19.2" stroke="#111111" strokeWidth="1.4" />
+        </svg>
+      );
+    case 'trophy':
+    default:
+      return (
+        <svg viewBox="0 0 40 40" className="w-[74%] h-[74%]" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 11 H7 C6.5 17, 9 20, 12 20" stroke={stroke} strokeWidth="2" />
+          <path d="M29 11 H33 C33.5 17, 31 20, 28 20" stroke={stroke} strokeWidth="2" />
+          <path d="M11 8 H29 V17 C29 22.5, 25 26, 20 26 C15 26, 11 22.5, 11 17 Z" fill="#ffb110" stroke={stroke} strokeWidth="2" />
+          <line x1="20" y1="26" x2="20" y2="31" stroke={stroke} strokeWidth="2.2" />
+          <rect x="14" y="31" width="12" height="4" rx="1.5" fill="#0075de" stroke={stroke} strokeWidth="1.6" />
+          <circle cx="17.2" cy="15.5" r="1.2" fill="#111111" />
+          <circle cx="22.8" cy="15.5" r="1.2" fill="#111111" />
+          <path d="M17.5 19 C19 20.5, 21 20.5, 22.5 19" stroke="#111111" strokeWidth="1.6" />
+        </svg>
+      );
+  }
+};
+
 export const ClubLogoMark: React.FC<{
   clubId: string;
-  accentColor: string;
+  logo?: string | null;
+  accentColor?: string;
   size?: number;
-}> = ({ clubId, accentColor, size = 44 }) => {
-  const strokeColor = accentColor === '#02093a' ? '#ffffff' : '#000000';
+  className?: string;
+}> = ({ clubId, logo, accentColor = '#e6f3fe', size = 44, className = '' }) => {
+  const [imgFailed, setImgFailed] = useState(false);
+  const spec = getClubAvatarByValue(logo, clubId);
+  const isCustomImageUrl =
+    Boolean(logo) && !logo!.startsWith(CLUB_AVATAR_PREFIX) && !imgFailed;
+  const isDarkBg = accentColor.toLowerCase() === '#02093a';
+
+  if (isCustomImageUrl) {
+    return (
+      <img
+        src={logo!}
+        alt={`${clubId} logo`}
+        style={{ width: size, height: size, backgroundColor: accentColor }}
+        onError={() => setImgFailed(true)}
+        className={`rounded-[10px] border border-black/10 object-cover shrink-0 ${className}`}
+      />
+    );
+  }
+
   return (
     <div
       style={{ width: size, height: size, backgroundColor: accentColor }}
-      className="rounded-[10px] border border-black/10 flex items-center justify-center shrink-0"
+      className={`rounded-[10px] border border-black/10 flex items-center justify-center shrink-0 overflow-hidden ${className}`}
       aria-hidden="true"
     >
-      <svg
-        viewBox="0 0 24 24"
-        className="w-5 h-5"
-        fill="none"
-        stroke={strokeColor}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <ClubMascotSvg id={spec.id} onDark={isDarkBg} />
+    </div>
+  );
+};
+
+export const ClubAvatarPicker: React.FC<{
+  selectedLogo: string | null | undefined;
+  selectedTint: string;
+  onSelectLogo: (logo: string) => void;
+  onSelectTint?: (color: string) => void;
+  clubSlug?: string;
+}> = ({ selectedLogo, selectedTint, onSelectLogo, onSelectTint, clubSlug = 'club' }) => {
+  const activeSpec = getClubAvatarByValue(selectedLogo, clubSlug);
+  const currentValue = `${CLUB_AVATAR_PREFIX}${activeSpec.id}`;
+
+  const handleShuffle = () => {
+    const others = CLUB_AVATARS.filter((c) => `${CLUB_AVATAR_PREFIX}${c.id}` !== currentValue);
+    const pick = others[Math.floor(Math.random() * others.length)] ?? CLUB_AVATARS[0];
+    onSelectLogo(`${CLUB_AVATAR_PREFIX}${pick.id}`);
+    if (onSelectTint) {
+      onSelectTint(pick.defaultTint);
+    }
+  };
+
+  return (
+    <div className="p-3.5 rounded-[10px] bg-[#faf9f8] border border-black/[0.08] space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <ClubLogoMark
+            clubId={clubSlug}
+            logo={selectedLogo || currentValue}
+            accentColor={selectedTint || activeSpec.defaultTint}
+            size={48}
+          />
+          <div>
+            <div className="text-[13px] font-semibold text-black">
+              Club Avatar · {activeSpec.label}
+            </div>
+            <div className="text-[11px] text-[#615d59]">
+              Pick a funky mascot badge for cards & headers.
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleShuffle}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-black/10 text-[12px] font-medium text-black hover:bg-[#f6f5f4] transition-colors cursor-pointer shrink-0"
+        >
+          <Shuffle className="w-3 h-3" />
+          Shuffle
+        </button>
+      </div>
+
+      <div
+        className="flex flex-wrap items-center gap-2"
+        role="radiogroup"
+        aria-label="Choose a club avatar"
       >
-        {clubId === 'coding-club' && (
-          <>
-            <polyline points="8 7 3 12 8 17" />
-            <polyline points="16 7 21 12 16 17" />
-            <line x1="14" y1="5" x2="10" y2="19" />
-          </>
-        )}
-        {clubId === 'robotics-society' && (
-          <>
-            <rect x="5" y="8" width="14" height="10" rx="2" />
-            <line x1="12" y1="4" x2="12" y2="8" />
-            <circle cx="9.5" cy="13" r="1" fill="currentColor" />
-            <circle cx="14.5" cy="13" r="1" fill="currentColor" />
-          </>
-        )}
-        {clubId === 'photography-club' && (
-          <>
-            <path d="M4 8h3l2-2h6l2 2h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" />
-            <circle cx="12" cy="14" r="3.5" />
-          </>
-        )}
-        {clubId === 'entrepreneurship-cell' && (
-          <path d="M12 3l3 6 6 1-4.5 4.2 1.2 6.3L12 17.5 6.3 20.5l1.2-6.3L3 10l6-1z" />
-        )}
-        {(clubId === 'cultural-society' || clubId === 'music-society') && (
-          <>
-            <circle cx="9" cy="17" r="3" />
-            <path d="M12 17V5l8-2v12" />
-            <circle cx="17" cy="15" r="3" />
-          </>
-        )}
-        {clubId === 'debate-society' && (
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        )}
-        {clubId === 'ai-ml-club' && (
-          <>
-            <circle cx="12" cy="12" r="3" />
-            <circle cx="5" cy="6" r="2" />
-            <circle cx="19" cy="6" r="2" />
-            <circle cx="5" cy="18" r="2" />
-            <circle cx="19" cy="18" r="2" />
-            <line x1="6.7" y1="7.5" x2="9.8" y2="10" />
-            <line x1="17.3" y1="7.5" x2="14.2" y2="10" />
-            <line x1="6.7" y1="16.5" x2="9.8" y2="14" />
-            <line x1="17.3" y1="16.5" x2="14.2" y2="14" />
-          </>
-        )}
-        {clubId === 'design-club' && (
-          <>
-            <path d="M12 3l7 11-7 7-7-7 7-11z" />
-            <circle cx="12" cy="13" r="2" />
-          </>
-        )}
-        {clubId === 'sports-club' && (
-          <>
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 3a14 14 0 0 0 0 18M3 12h18" />
-          </>
-        )}
-        {clubId === 'literary-society' && (
-          <>
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-          </>
-        )}
-        {clubId === 'innovation-club' && (
-          <>
-            <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.7.6 1 1.3 1 2.3h6c0-1 .3-1.7 1-2.3A7 7 0 0 0 12 2z" />
-          </>
-        )}
-        {![
-          'coding-club',
-          'robotics-society',
-          'photography-club',
-          'entrepreneurship-cell',
-          'cultural-society',
-          'music-society',
-          'debate-society',
-          'ai-ml-club',
-          'design-club',
-          'sports-club',
-          'literary-society',
-          'innovation-club',
-        ].includes(clubId) && (
-          <>
-            <circle cx="12" cy="12" r="8" />
-            <path d="M8 12h8M12 8v8" />
-          </>
-        )}
-      </svg>
+        {CLUB_AVATARS.map((spec) => {
+          const value = `${CLUB_AVATAR_PREFIX}${spec.id}`;
+          const isSelected = activeSpec.id === spec.id;
+          return (
+            <button
+              key={spec.id}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              aria-label={spec.label}
+              title={spec.label}
+              onClick={() => onSelectLogo(value)}
+              className={`relative rounded-[11px] p-0.5 transition-transform cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0075de] ${
+                isSelected
+                  ? 'ring-2 ring-black ring-offset-1 scale-105'
+                  : 'opacity-85 hover:opacity-100 hover:scale-105'
+              }`}
+            >
+              <ClubLogoMark
+                clubId={clubSlug}
+                logo={value}
+                accentColor={selectedTint || spec.defaultTint}
+                size={40}
+              />
+              {isSelected && (
+                <span
+                  className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center border border-white"
+                  aria-hidden="true"
+                >
+                  ✓
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {onSelectTint && (
+        <div className="pt-2 border-t border-black/[0.06] flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#757575]">
+            Badge Tint
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {CLUB_ACCENT_SWATCHES.map((sw) => {
+              const active = (selectedTint || '').toLowerCase() === sw.color.toLowerCase();
+              return (
+                <button
+                  key={sw.color}
+                  type="button"
+                  title={sw.label}
+                  aria-label={`Select ${sw.label} background`}
+                  onClick={() => onSelectTint(sw.color)}
+                  style={{ backgroundColor: sw.color }}
+                  className={`w-6 h-6 rounded-full border border-black/15 cursor-pointer transition-transform ${
+                    active ? 'ring-2 ring-black ring-offset-1 scale-110' : 'hover:scale-105'
+                  }`}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

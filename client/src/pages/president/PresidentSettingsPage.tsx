@@ -8,6 +8,11 @@ import { useAuth } from '../../context/AuthContext';
 import { presidentService } from '../../services/president.service';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
+import {
+  CLUB_AVATAR_PREFIX,
+  ClubAvatarPicker,
+  getClubAvatarByValue,
+} from '../../components/common/CharacterMarks';
 import { ErrorState, PageSkeleton } from '../../components/common/StateFeedback';
 import { getApiErrorMessage } from '../../services/api';
 import { ContributionType } from '../../types';
@@ -38,6 +43,8 @@ export const PresidentSettingsPage: React.FC = () => {
   const [name, setName] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [logo, setLogo] = useState('');
+  const [accentColor, setAccentColor] = useState('#e6f3fe');
   const [isRecruiting, setIsRecruiting] = useState(true);
   const [requireVerification, setRequireVerification] = useState(true);
   const [pointsConfig, setPointsConfig] = useState<Record<ContributionType, number>>(DEFAULT_POINTS);
@@ -60,6 +67,11 @@ export const PresidentSettingsPage: React.FC = () => {
       setName(clubDetail.name);
       setShortDescription(clubDetail.shortDescription);
       setCategory(clubDetail.category);
+      setLogo(
+        clubDetail.logo ||
+          `${CLUB_AVATAR_PREFIX}${getClubAvatarByValue(clubDetail.logo, clubDetail.slug).id}`
+      );
+      setAccentColor(clubDetail.accentColor || '#e6f3fe');
       setIsRecruiting(clubDetail.isRecruiting);
       setRequireVerification(clubDetail.requireVerification ?? true);
       if (clubDetail.contributionPointsConfig) {
@@ -116,6 +128,13 @@ export const PresidentSettingsPage: React.FC = () => {
           {/* General */}
           <section className="notion-card p-6 space-y-4">
             <h2 className="text-[18px] font-bold text-black">General Information</h2>
+            <ClubAvatarPicker
+              clubSlug={clubDetail?.slug || 'club'}
+              selectedLogo={logo}
+              selectedTint={accentColor}
+              onSelectLogo={setLogo}
+              onSelectTint={setAccentColor}
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[13px] font-medium text-black mb-1">Club Name</label>
@@ -164,6 +183,8 @@ export const PresidentSettingsPage: React.FC = () => {
                     name,
                     category,
                     shortDescription,
+                    logo: logo.trim() || null,
+                    accentColor,
                     isRecruiting,
                   })
                 }

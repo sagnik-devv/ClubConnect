@@ -301,6 +301,7 @@ export const StudentDashboardPage: React.FC = () => {
                       <div className="flex items-center gap-3">
                         <ClubLogoMark
                           clubId={club.slug}
+                          logo={club.logo}
                           accentColor={club.accentColor || '#e6f3fe'}
                           size={40}
                         />

@@ -117,7 +117,12 @@ export const ClubDetailsPage: React.FC = () => {
         >
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex items-start gap-5">
-              <ClubLogoMark clubId={club.slug} accentColor="#ffffff" size={64} />
+              <ClubLogoMark
+                clubId={club.slug}
+                logo={club.logo}
+                accentColor="#ffffff"
+                size={64}
+              />
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="neutral">{club.category}</Badge>

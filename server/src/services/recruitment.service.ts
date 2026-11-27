@@ -10,8 +10,29 @@ import { AppError } from '../utils/AppError.js';
 import { assertClubRole, LEADER_ROLES } from '../middleware/role.middleware.js';
 import { createManyNotifications, createNotification } from './notification.service.js';
 
+async function attachAssignedRoles<
+  T extends { userId: string; clubId: string; status: ApplicationStatus }
+>(apps: T[]): Promise<Array<T & { assignedRole: ClubRole | null }>> {
+  if (apps.length === 0) return [];
+  const memberships = await prisma.clubMembership.findMany({
+    where: {
+      status: MembershipStatus.ACTIVE,
+      OR: apps.map((a) => ({ userId: a.userId, clubId: a.clubId })),
+    },
+    select: { userId: true, clubId: true, role: true },
+  });
+  const roleMap = new Map(memberships.map((m) => [`${m.userId}:${m.clubId}`, m.role]));
+  return apps.map((app) => ({
+    ...app,
+    assignedRole:
+      app.status === ApplicationStatus.ACCEPTED
+        ? roleMap.get(`${app.userId}:${app.clubId}`) ?? ClubRole.MEMBER
+        : null,
+  }));
+}
+
 export async function listRecruitmentOverview(userId: string, globalRole: GlobalRole) {
-  const myApplications = await prisma.recruitmentApplication.findMany({
+  const myAppsRaw = await prisma.recruitmentApplication.findMany({
     where: { userId },
     include: {
       club: { select: { id: true, name: true, slug: true, category: true, expectedTimeCommitment: true } },
@@ -19,9 +40,28 @@ export async function listRecruitmentOverview(userId: string, globalRole: Global
     orderBy: { appliedAt: 'desc' },
   });
 
-  let manageableApplications: Awaited<ReturnType<typeof listClubApplications>> = [];
+  let manageableRaw: Array<
+    Prisma.RecruitmentApplicationGetPayload<{
+      include: {
+        club: { select: { id: true; name: true; slug: true } };
+        user: {
+          select: {
+            id: true;
+            fullName: true;
+            email: true;
+            department: true;
+            course: true;
+            yearOfStudy: true;
+            profileImage: true;
+          };
+        };
+        reviewedBy: { select: { id: true; fullName: true } };
+      };
+    }>
+  > = [];
+
   if (globalRole === GlobalRole.SUPER_ADMIN) {
-    manageableApplications = await prisma.recruitmentApplication.findMany({
+    manageableRaw = await prisma.recruitmentApplication.findMany({
       include: {
         club: { select: { id: true, name: true, slug: true } },
         user: {
@@ -45,7 +85,7 @@ export async function listRecruitmentOverview(userId: string, globalRole: Global
       select: { clubId: true },
     });
     if (leaderClubs.length > 0) {
-      manageableApplications = await prisma.recruitmentApplication.findMany({
+      manageableRaw = await prisma.recruitmentApplication.findMany({
         where: { clubId: { in: leaderClubs.map((c) => c.clubId) } },
         include: {
           club: { select: { id: true, name: true, slug: true } },
@@ -67,6 +107,11 @@ export async function listRecruitmentOverview(userId: string, globalRole: Global
     }
   }
 
+  const [myApplications, manageableApplications] = await Promise.all([
+    attachAssignedRoles(myAppsRaw),
+    attachAssignedRoles(manageableRaw),
+  ]);
+
   return { myApplications, manageableApplications };
 }
 
@@ -77,7 +122,7 @@ export async function listClubApplications(
 ) {
   await assertClubRole(actorId, globalRole, clubId, LEADER_ROLES);
 
-  return prisma.recruitmentApplication.findMany({
+  const apps = await prisma.recruitmentApplication.findMany({
     where: { clubId },
     include: {
       club: { select: { id: true, name: true, slug: true } },
@@ -96,10 +141,12 @@ export async function listClubApplications(
     },
     orderBy: { appliedAt: 'desc' },
   });
+
+  return attachAssignedRoles(apps);
 }
 
 export async function listMyApplications(userId: string) {
-  return prisma.recruitmentApplication.findMany({
+  const apps = await prisma.recruitmentApplication.findMany({
     where: { userId },
     include: {
       club: {
@@ -114,6 +161,8 @@ export async function listMyApplications(userId: string) {
     },
     orderBy: { appliedAt: 'desc' },
   });
+
+  return attachAssignedRoles(apps);
 }
 
 export async function getApplicationById(
@@ -145,7 +194,8 @@ export async function getApplicationById(
     await assertClubRole(actorId, globalRole, application.clubId, LEADER_ROLES);
   }
 
-  return application;
+  const [enriched] = await attachAssignedRoles([application]);
+  return enriched;
 }
 
 export async function submitApplication(
@@ -228,14 +278,14 @@ export async function submitApplication(
     }))
   );
 
-  return application;
+  return { ...application, assignedRole: null };
 }
 
 export async function updateApplicationStatus(
   id: string,
   reviewerId: string,
   globalRole: GlobalRole,
-  payload: { status: ApplicationStatus; onboardingStep?: number }
+  payload: { status: ApplicationStatus; onboardingStep?: number; assignedRole?: ClubRole }
 ) {
   const existing = await prisma.recruitmentApplication.findUnique({
     where: { id },
@@ -247,9 +297,19 @@ export async function updateApplicationStatus(
     throw new AppError('You cannot review or approve your own recruitment application', 403);
   }
 
-  await assertClubRole(reviewerId, globalRole, existing.clubId, LEADER_ROLES);
+  const actorMembership = await assertClubRole(reviewerId, globalRole, existing.clubId, LEADER_ROLES);
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const requestedRole = payload.assignedRole;
+  if (
+    payload.status === ApplicationStatus.ACCEPTED &&
+    requestedRole === ClubRole.PRESIDENT &&
+    globalRole !== GlobalRole.SUPER_ADMIN &&
+    actorMembership?.role !== ClubRole.PRESIDENT
+  ) {
+    throw new AppError('Only a current club President can assign the President role', 403);
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
     const nextStep =
       payload.onboardingStep ??
       (payload.status === ApplicationStatus.ACCEPTED
@@ -270,44 +330,54 @@ export async function updateApplicationStatus(
       },
     });
 
+    let activeAssignedRole: ClubRole | null = null;
+
     if (payload.status === ApplicationStatus.ACCEPTED) {
       const existingMembership = await tx.clubMembership.findUnique({
         where: { userId_clubId: { userId: existing.userId, clubId: existing.clubId } },
       });
+
+      const roleToAssign = requestedRole ?? existingMembership?.role ?? ClubRole.MEMBER;
+      activeAssignedRole = roleToAssign;
 
       if (!existingMembership) {
         await tx.clubMembership.create({
           data: {
             userId: existing.userId,
             clubId: existing.clubId,
-            role: ClubRole.MEMBER,
+            role: roleToAssign,
             status: MembershipStatus.ACTIVE,
           },
         });
-      } else if (existingMembership.status !== MembershipStatus.ACTIVE) {
+      } else if (existingMembership.status !== MembershipStatus.ACTIVE || requestedRole) {
         await tx.clubMembership.update({
           where: { id: existingMembership.id },
-          data: { status: MembershipStatus.ACTIVE, role: ClubRole.MEMBER },
+          data: {
+            status: MembershipStatus.ACTIVE,
+            role: roleToAssign,
+          },
         });
       }
     }
 
-    return app;
+    return { ...app, assignedRole: activeAssignedRole };
   });
+
+  const roleLabel = (result.assignedRole ?? ClubRole.MEMBER).replace('_', ' ');
 
   await createNotification({
     userId: existing.userId,
     title: `Application ${payload.status.toLowerCase()} — ${existing.club.name}`,
     message:
       payload.status === ApplicationStatus.ACCEPTED
-        ? `Congratulations! You were accepted into ${existing.club.name}.`
+        ? `Congratulations! You were accepted into ${existing.club.name} as ${roleLabel}.`
         : `Your application status in ${existing.club.name} changed to ${payload.status}.`,
     type: 'APPLICATION_DECISION',
-    relatedEntityId: updated.id,
+    relatedEntityId: result.id,
     relatedEntityType: 'RecruitmentApplication',
   });
 
-  return updated;
+  return result;
 }
 
 export async function updateApplicationNotes(
